@@ -1,0 +1,38 @@
+{
+  "type": "view",
+  "layout": "inline",
+  "direction": "vertical",
+  "spacing": 8,
+  "padding": 16,
+  "cornerradius": 12,
+  "background": {
+    "light": "#0000000D",
+    "dark": "#FFFFFF14"
+  },
+  "components": [
+    {
+      "type": "label",
+      "text": "Nothing here yet",
+      "font": {
+        "size": 17,
+        "weight": "semibold"
+      }
+    },
+    {
+      "type": "label",
+      "colour": "secondaryLabelColor",
+      "text": "Search for your lights, aircon and sensors by name."
+    },
+    {
+      "type": "template",
+      "src": "openpicker",
+      "params": {
+        "text": "Add devices and sensors",
+        "shortcut": ""
+      },
+      "constraints": {
+        "position": "left"
+      }
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "type": "view",
+  "layout": "inline",
+  "direction": "vertical",
+  "components": [
+    {
+      "constraints": {
+        "size": {
+          "height": 72
+        }
+      },
+      "type": "dataview",
+      "cols": 4,
+      "spacing": 8,
+      "cell": {
+        "height": 56,
+        "root": {
+          "type": "view",
+          "layout": "inline",
+          "direction": "vertical",
+          "spacing": 2,
+          "padding": 10,
+          "cornerradius": 10,
+          "components": [
+            {
+              "id": "value",
+              "type": "label",
+              "font": {
+                "size": 20,
+                "weight": "semibold",
+                "monospaced": "digits"
+              }
+            },
+            {
+              "id": "label",
+              "type": "label",
+              "colour": "secondaryLabelColor",
+              "font": {
+                "size": 11
+              }
+            }
+          ],
+          "id": "rcard",
+          "menu": [
+            {
+              "text": "Remove from panel",
+              "action": {
+                "type": "script",
+                "src": "scripts/home",
+                "async": true,
+                "args": [
+                  "pin",
+                  "{data:entity}"
+                ]
+              }
+            }
+          ]
+        },
+        "init": {
+          "rcard.background": {
+            "light": "#0000000D",
+            "dark": "#FFFFFF14"
+          }
+        }
+      },
+      "data": {
+        "src": []
+      },
+      "id": "readings"
+    }
+  ]
+}

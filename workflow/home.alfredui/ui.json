@@ -1,0 +1,326 @@
+{
+  "bundleid": "com.dullylabs.alfredui.home",
+  "variablesconfig": {
+    "ha_url": {
+      "src": "variable",
+      "scriptenv": true
+    },
+    "ha_token": {
+      "src": "variable",
+      "scriptenv": true
+    },
+    "entities": {
+      "src": "variable",
+      "scriptenv": true
+    },
+    "climate": {
+      "default": "",
+      "scriptenv": true
+    },
+    "layout": {
+      "default": "",
+      "scriptenv": true
+    },
+    "q": {
+      "default": ""
+    },
+    "f": {
+      "default": ""
+    },
+    "ha_mock": {
+      "src": "variable",
+      "scriptenv": true
+    }
+  },
+  "pulse": {
+    "src": "scripts/home",
+    "args": "state",
+    "interval": 15
+  },
+  "templates": {
+    "openpicker": {
+      "type": "button",
+      "text": "{param:text}",
+      "shortcut": "{param:shortcut}",
+      "tooltip": "Search and add devices and sensors (\u2318E)",
+      "events": [
+        {
+          "action": [
+            {
+              "type": "script",
+              "src": "scripts/home",
+              "args": "pick"
+            },
+            {
+              "type": "json",
+              "src": {
+                "update": {
+                  "ids": {
+                    "search": {
+                      "focus": true
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "window": {
+    "padding": 12,
+    "root": {
+      "type": "view",
+      "layout": "stack",
+      "events": [
+        {
+          "triggers": "preload",
+          "action": {
+            "type": "script",
+            "src": "scripts/home",
+            "args": "state"
+          }
+        },
+        {
+          "triggers": "launched",
+          "action": {
+            "type": "script",
+            "src": "scripts/home",
+            "args": "firstrun"
+          }
+        }
+      ],
+      "components": [
+        {
+          "constraints": {
+            "position": "top",
+            "stretch": "horizontal"
+          },
+          "id": "setup",
+          "type": "view",
+          "hidden": true,
+          "layout": "inline",
+          "direction": "vertical",
+          "spacing": 8,
+          "padding": 16,
+          "components": [
+            {
+              "id": "setup_heading",
+              "type": "label",
+              "text": "Connect Home Assistant",
+              "font": {
+                "size": 20,
+                "weight": "semibold"
+              }
+            },
+            {
+              "id": "setup_detail",
+              "type": "label",
+              "hidden": true,
+              "text": " ",
+              "colour": "systemOrangeColor"
+            },
+            {
+              "type": "label",
+              "colour": "secondaryLabelColor",
+              "text": "1. In Home Assistant: your name \u203a Security \u203a Create token."
+            },
+            {
+              "type": "label",
+              "colour": "secondaryLabelColor",
+              "text": "2. In Alfred: Workflows \u203a Home \u203a Configure Workflow. Paste the address and token."
+            },
+            {
+              "type": "label",
+              "colour": "secondaryLabelColor",
+              "text": "3. Type home and search for your devices."
+            }
+          ]
+        },
+        {
+          "constraints": {
+            "position": "top",
+            "stretch": "horizontal"
+          },
+          "id": "main",
+          "type": "view",
+          "layout": "inline",
+          "direction": "vertical",
+          "spacing": 10,
+          "shortcuts": [
+            {
+              "shortcut": "\u2190",
+              "action": {
+                "type": "function",
+                "src": "tiles",
+                "args": "selectleft"
+              }
+            },
+            {
+              "shortcut": "\u2192",
+              "action": {
+                "type": "function",
+                "src": "tiles",
+                "args": "selectright"
+              }
+            },
+            {
+              "shortcut": "\u2191",
+              "action": {
+                "type": "function",
+                "src": "tiles",
+                "args": "selectup"
+              }
+            },
+            {
+              "shortcut": "\u2193",
+              "action": {
+                "type": "function",
+                "src": "tiles",
+                "args": "selectdown"
+              }
+            },
+            {
+              "shortcut": "\u2318\u2191",
+              "action": {
+                "type": "script",
+                "src": "scripts/home",
+                "async": true,
+                "args": [
+                  "step",
+                  "{value:tiles.selected.entity}",
+                  "1"
+                ]
+              }
+            },
+            {
+              "shortcut": "\u2318\u2193",
+              "action": {
+                "type": "script",
+                "src": "scripts/home",
+                "async": true,
+                "args": [
+                  "step",
+                  "{value:tiles.selected.entity}",
+                  "-1"
+                ]
+              }
+            }
+          ],
+          "components": [
+            {
+              "id": "filter",
+              "type": "textfield",
+              "focus": true,
+              "placeholder": "Search your home",
+              "bordered": false,
+              "focusring": false,
+              "background": null,
+              "font": {
+                "size": 20
+              },
+              "events": [
+                {
+                  "triggers": "changed",
+                  "action": [
+                    {
+                      "type": "json",
+                      "variables": {
+                        "f": "{value:filter.text}"
+                      },
+                      "src": {}
+                    },
+                    {
+                      "type": "function",
+                      "src": "tiles",
+                      "args": "filterdata"
+                    },
+                    {
+                      "type": "function",
+                      "src": "switches",
+                      "args": "filterdata"
+                    }
+                  ]
+                },
+                {
+                  "triggers": "actioned",
+                  "action": {
+                    "type": "script",
+                    "src": "scripts/home",
+                    "async": true,
+                    "args": [
+                      "toggle",
+                      "{value:tiles.selected.entity}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "sec_empty",
+              "type": "view"
+            },
+            {
+              "id": "sec_tiles",
+              "type": "view"
+            },
+            {
+              "id": "sec_switches",
+              "type": "view"
+            },
+            {
+              "id": "sec_readings",
+              "type": "view"
+            },
+            {
+              "type": "view",
+              "layout": "border",
+              "spacing": 8,
+              "components": [
+                {
+                  "constraints": {
+                    "region": "left"
+                  },
+                  "type": "label",
+                  "colour": "tertiaryLabelColor",
+                  "font": {
+                    "size": 11
+                  },
+                  "text": "\u21a9 on/off \u00b7 \u2318\u2191\u2193 adjust"
+                },
+                {
+                  "constraints": {
+                    "region": "right"
+                  },
+                  "type": "view",
+                  "layout": "inline",
+                  "spacing": 10,
+                  "components": [
+                    {
+                      "id": "updated",
+                      "type": "label",
+                      "colour": "secondaryLabelColor",
+                      "font": {
+                        "size": 11
+                      },
+                      "text": " "
+                    },
+                    {
+                      "type": "template",
+                      "src": "openpicker",
+                      "params": {
+                        "text": "Edit  \u2318E",
+                        "shortcut": "\u2318E"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

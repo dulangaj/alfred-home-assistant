@@ -1,0 +1,261 @@
+{
+  "type": "view",
+  "layout": "inline",
+  "direction": "vertical",
+  "components": [
+    {
+      "id": "switches",
+      "type": "dataview",
+      "cols": 3,
+      "spacing": 8,
+      "placeholder": "",
+      "constraints": {
+        "size": {
+          "height": 74
+        }
+      },
+      "cell": {
+        "height": 66,
+        "init": {},
+        "selected": {},
+        "root": {
+          "id": "tile",
+          "type": "view",
+          "layout": "inline",
+          "direction": "vertical",
+          "spacing": 0,
+          "padding": 12,
+          "cornerradius": 12,
+          "components": [
+            {
+              "type": "view",
+              "layout": "border",
+              "spacing": 8,
+              "components": [
+                {
+                  "constraints": {
+                    "region": "left",
+                    "size": {
+                      "width": 24
+                    }
+                  },
+                  "id": "icon",
+                  "type": "button",
+                  "bordered": false,
+                  "font": {
+                    "size": 18
+                  },
+                  "tooltip": "On/off",
+                  "events": [
+                    {
+                      "action": {
+                        "type": "script",
+                        "src": "scripts/home",
+                        "async": true,
+                        "args": [
+                          "toggle",
+                          "{data:entity}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "constraints": {
+                    "region": "centre"
+                  },
+                  "type": "view",
+                  "layout": "inline",
+                  "direction": "vertical",
+                  "spacing": 1,
+                  "components": [
+                    {
+                      "id": "name",
+                      "type": "label",
+                      "font": {
+                        "weight": "semibold"
+                      }
+                    },
+                    {
+                      "id": "state",
+                      "type": "label",
+                      "colour": "secondaryLabelColor",
+                      "font": {
+                        "size": 11
+                      }
+                    }
+                  ]
+                },
+                {
+                  "constraints": {
+                    "region": "right"
+                  },
+                  "type": "view",
+                  "layout": "stack",
+                  "components": [
+                    {
+                      "id": "switchview",
+                      "type": "view",
+                      "layout": "stack",
+                      "constraints": {
+                        "size": {
+                          "width": 40,
+                          "height": 24
+                        }
+                      },
+                      "components": [
+                        {
+                          "id": "track",
+                          "type": "imageview",
+                          "resize": "stretch",
+                          "image": {
+                            "type": "symbol",
+                            "src": "capsule.fill"
+                          },
+                          "constraints": {
+                            "size": {
+                              "width": 40,
+                              "height": 24
+                            }
+                          }
+                        },
+                        {
+                          "id": "knobL",
+                          "type": "imageview",
+                          "contenttintcolour": "white",
+                          "image": {
+                            "type": "symbol",
+                            "src": "circle.fill"
+                          },
+                          "constraints": {
+                            "position": "left",
+                            "size": {
+                              "width": 20,
+                              "height": 20
+                            },
+                            "insets": {
+                              "left": 2
+                            }
+                          }
+                        },
+                        {
+                          "id": "knobR",
+                          "type": "imageview",
+                          "contenttintcolour": "white",
+                          "image": {
+                            "type": "symbol",
+                            "src": "circle.fill"
+                          },
+                          "constraints": {
+                            "position": "right",
+                            "size": {
+                              "width": 20,
+                              "height": 20
+                            },
+                            "insets": {
+                              "right": 2
+                            }
+                          }
+                        },
+                        {
+                          "id": "switchhit",
+                          "type": "button",
+                          "text": "",
+                          "bordered": false,
+                          "tooltip": "On/off",
+                          "constraints": {
+                            "size": {
+                              "width": 40,
+                              "height": 24
+                            }
+                          },
+                          "events": [
+                            {
+                              "action": {
+                                "type": "script",
+                                "src": "scripts/home",
+                                "async": true,
+                                "args": [
+                                  "toggle",
+                                  "{data:entity}"
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "run",
+                      "type": "button",
+                      "text": "Run",
+                      "font": {
+                        "size": 11
+                      },
+                      "events": [
+                        {
+                          "action": {
+                            "type": "script",
+                            "src": "scripts/home",
+                            "async": true,
+                            "args": [
+                              "toggle",
+                              "{data:entity}"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "key",
+              "type": "label",
+              "hidden": true
+            }
+          ],
+          "menu": [
+            {
+              "text": "Turn on or off",
+              "action": {
+                "type": "script",
+                "src": "scripts/home",
+                "async": true,
+                "args": [
+                  "toggle",
+                  "{data:entity}"
+                ]
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "text": "Remove from panel",
+              "action": {
+                "type": "script",
+                "src": "scripts/home",
+                "async": true,
+                "args": [
+                  "pin",
+                  "{data:entity}"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "data": {
+        "filter": {
+          "type": "basic",
+          "args": "name.text",
+          "match": "{var:f}",
+          "matchmode": "wordmatchanyorder"
+        },
+        "src": []
+      }
+    }
+  ]
+}

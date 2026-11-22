@@ -1,0 +1,487 @@
+{
+  "type": "view",
+  "layout": "inline",
+  "direction": "vertical",
+  "components": [
+    {
+      "id": "tiles",
+      "type": "dataview",
+      "cols": 2,
+      "spacing": 8,
+      "placeholder": "No match",
+      "constraints": {
+        "size": {
+          "height": 132
+        }
+      },
+      "cell": {
+        "height": 152,
+        "init": {
+          "tile.border": {
+            "width": 0
+          }
+        },
+        "selected": {
+          "tile.border": {
+            "width": 2,
+            "colour": "alfredSelectedResultBackgroundColor"
+          }
+        },
+        "root": {
+          "id": "tile",
+          "type": "view",
+          "layout": "inline",
+          "direction": "vertical",
+          "spacing": 8,
+          "padding": 12,
+          "cornerradius": 12,
+          "components": [
+            {
+              "type": "view",
+              "layout": "border",
+              "spacing": 8,
+              "components": [
+                {
+                  "constraints": {
+                    "region": "left",
+                    "size": {
+                      "width": 24
+                    }
+                  },
+                  "id": "icon",
+                  "type": "button",
+                  "bordered": false,
+                  "font": {
+                    "size": 18
+                  },
+                  "tooltip": "On/off",
+                  "events": [
+                    {
+                      "action": {
+                        "type": "script",
+                        "src": "scripts/home",
+                        "async": true,
+                        "args": [
+                          "toggle",
+                          "{data:entity}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "constraints": {
+                    "region": "centre"
+                  },
+                  "type": "view",
+                  "layout": "inline",
+                  "direction": "vertical",
+                  "spacing": 1,
+                  "components": [
+                    {
+                      "id": "name",
+                      "type": "label",
+                      "font": {
+                        "weight": "semibold"
+                      }
+                    },
+                    {
+                      "id": "state",
+                      "type": "label",
+                      "colour": "secondaryLabelColor",
+                      "font": {
+                        "size": 11
+                      }
+                    }
+                  ]
+                },
+                {
+                  "constraints": {
+                    "region": "right"
+                  },
+                  "type": "view",
+                  "layout": "stack",
+                  "components": [
+                    {
+                      "id": "switchview",
+                      "type": "view",
+                      "layout": "stack",
+                      "constraints": {
+                        "size": {
+                          "width": 40,
+                          "height": 24
+                        }
+                      },
+                      "components": [
+                        {
+                          "id": "track",
+                          "type": "imageview",
+                          "resize": "stretch",
+                          "image": {
+                            "type": "symbol",
+                            "src": "capsule.fill"
+                          },
+                          "constraints": {
+                            "size": {
+                              "width": 40,
+                              "height": 24
+                            }
+                          }
+                        },
+                        {
+                          "id": "knobL",
+                          "type": "imageview",
+                          "contenttintcolour": "white",
+                          "image": {
+                            "type": "symbol",
+                            "src": "circle.fill"
+                          },
+                          "constraints": {
+                            "position": "left",
+                            "size": {
+                              "width": 20,
+                              "height": 20
+                            },
+                            "insets": {
+                              "left": 2
+                            }
+                          }
+                        },
+                        {
+                          "id": "knobR",
+                          "type": "imageview",
+                          "contenttintcolour": "white",
+                          "image": {
+                            "type": "symbol",
+                            "src": "circle.fill"
+                          },
+                          "constraints": {
+                            "position": "right",
+                            "size": {
+                              "width": 20,
+                              "height": 20
+                            },
+                            "insets": {
+                              "right": 2
+                            }
+                          }
+                        },
+                        {
+                          "id": "switchhit",
+                          "type": "button",
+                          "text": "",
+                          "bordered": false,
+                          "tooltip": "On/off",
+                          "constraints": {
+                            "size": {
+                              "width": 40,
+                              "height": 24
+                            }
+                          },
+                          "events": [
+                            {
+                              "action": {
+                                "type": "script",
+                                "src": "scripts/home",
+                                "async": true,
+                                "args": [
+                                  "toggle",
+                                  "{data:entity}"
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "run",
+                      "type": "button",
+                      "text": "Run",
+                      "font": {
+                        "size": 11
+                      },
+                      "events": [
+                        {
+                          "action": {
+                            "type": "script",
+                            "src": "scripts/home",
+                            "async": true,
+                            "args": [
+                              "toggle",
+                              "{data:entity}"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "view",
+              "layout": "stack",
+              "components": [
+                {
+                  "id": "levelrow",
+                  "type": "view",
+                  "layout": "grid",
+                  "rows": 1,
+                  "cols": 12,
+                  "spacing": 0,
+                  "components": [],
+                  "constraints": {
+                    "position": "centre",
+                    "stretch": "horizontal"
+                  }
+                },
+                {
+                  "id": "temprow",
+                  "type": "view",
+                  "layout": "inline",
+                  "spacing": 8,
+                  "components": [
+                    {
+                      "type": "button",
+                      "bordered": false,
+                      "tooltip": "Lower (\u2318\u2193)",
+                      "image": {
+                        "type": "symbol",
+                        "src": "minus.circle.fill"
+                      },
+                      "font": {
+                        "size": 16
+                      },
+                      "events": [
+                        {
+                          "action": {
+                            "type": "script",
+                            "src": "scripts/home",
+                            "async": true,
+                            "args": [
+                              "step",
+                              "{data:entity}",
+                              "-1"
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "target",
+                      "type": "label",
+                      "font": {
+                        "size": 18,
+                        "weight": "medium",
+                        "monospaced": "digits"
+                      }
+                    },
+                    {
+                      "type": "button",
+                      "bordered": false,
+                      "tooltip": "Higher (\u2318\u2191)",
+                      "image": {
+                        "type": "symbol",
+                        "src": "plus.circle.fill"
+                      },
+                      "font": {
+                        "size": 16
+                      },
+                      "events": [
+                        {
+                          "action": {
+                            "type": "script",
+                            "src": "scripts/home",
+                            "async": true,
+                            "args": [
+                              "step",
+                              "{data:entity}",
+                              "1"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "constraints": {
+                    "position": "left"
+                  }
+                },
+                {
+                  "id": "current",
+                  "type": "label",
+                  "colour": "secondaryLabelColor",
+                  "font": {
+                    "size": 11
+                  },
+                  "constraints": {
+                    "position": "right"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "view",
+              "layout": "stack",
+              "components": [
+                {
+                  "id": "warmrow",
+                  "type": "view",
+                  "layout": "grid",
+                  "rows": 1,
+                  "cols": 12,
+                  "spacing": 0,
+                  "constraints": {
+                    "position": "centre",
+                    "stretch": "horizontal"
+                  },
+                  "components": []
+                },
+                {
+                  "id": "optrow",
+                  "type": "view",
+                  "layout": "inline",
+                  "spacing": 6,
+                  "constraints": {
+                    "position": "left"
+                  },
+                  "components": [
+                    {
+                      "id": "options",
+                      "type": "picker",
+                      "items": [],
+                      "events": [
+                        {
+                          "triggers": "changed",
+                          "action": {
+                            "type": "script",
+                            "src": "scripts/home",
+                            "async": true,
+                            "args": [
+                              "option",
+                              "{data:entity}",
+                              "{value:self.selected.value}"
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "options2",
+                      "type": "picker",
+                      "items": [],
+                      "events": [
+                        {
+                          "triggers": "changed",
+                          "action": {
+                            "type": "script",
+                            "src": "scripts/home",
+                            "async": true,
+                            "args": [
+                              "option2",
+                              "{data:entity}",
+                              "{value:self.selected.value}"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "moderow",
+                  "type": "view",
+                  "layout": "grid",
+                  "rows": 1,
+                  "cols": 7,
+                  "spacing": 0,
+                  "components": [],
+                  "constraints": {
+                    "position": "centre",
+                    "stretch": "horizontal"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "view",
+              "layout": "stack",
+              "components": [
+                {
+                  "id": "huerow",
+                  "type": "view",
+                  "layout": "grid",
+                  "rows": 1,
+                  "cols": 12,
+                  "spacing": 0,
+                  "components": [],
+                  "constraints": {
+                    "position": "centre",
+                    "stretch": "horizontal"
+                  }
+                },
+                {
+                  "id": "fanrow",
+                  "type": "view",
+                  "layout": "grid",
+                  "rows": 1,
+                  "cols": 7,
+                  "spacing": 4,
+                  "components": [],
+                  "constraints": {
+                    "position": "centre",
+                    "stretch": "horizontal"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "key",
+              "type": "label",
+              "hidden": true
+            }
+          ],
+          "menu": [
+            {
+              "text": "Turn on or off",
+              "action": {
+                "type": "script",
+                "src": "scripts/home",
+                "async": true,
+                "args": [
+                  "toggle",
+                  "{data:entity}"
+                ]
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "text": "Remove from panel",
+              "action": {
+                "type": "script",
+                "src": "scripts/home",
+                "async": true,
+                "args": [
+                  "pin",
+                  "{data:entity}"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "data": {
+        "filter": {
+          "type": "basic",
+          "args": "name.text",
+          "match": "{var:f}",
+          "matchmode": "wordmatchanyorder"
+        },
+        "src": []
+      }
+    }
+  ]
+}

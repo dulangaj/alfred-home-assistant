@@ -1,0 +1,316 @@
+#!/usr/bin/osascript -l JavaScript
+// Home panel backend: home [state | firstrun | pick | pin <id> | toggle <id> | level <id> <pct> | step <id> <±1> | warm <id> <step> | hue <id> <degrees> | mode <id> <i> | fan <id> <i> | option <id> <v> | option2 <id> <v>].
+// Reads ha_url, ha_token and entities (one ID per line) from the workflow configuration and prints Alfred UI JSON actions.
+// Each tile shows the controls its entity's attributes say it supports, like Home Assistant's own tile card features.
+ObjC.import("stdlib")
+const app = Application.currentApplication()
+app.includeStandardAdditions = true
+
+const env = name => { try { return ObjC.unwrap($.getenv(name)) || "" } catch { return "" } }
+const sh = s => "'" + String(s).replace(/'/g, "'\\''") + "'"
+const readJSON = path => JSON.parse(ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null)))
+
+const TOGGLE = ["light", "switch", "fan", "input_boolean", "climate", "media_player", "cover", "lock", "humidifier", "siren", "vacuum"]
+// Generic Home Assistant controls: a pick-one list (select) and a value in a range (number); devices of any kind expose settings through these.
+const SETTING = ["select", "input_select", "number", "input_number"]
+const PRESS = { button: "press", input_button: "press", scene: "turn_on", script: "turn_on" }
+const OFF = ["off", "unavailable", "unknown", "closed", "locked", "idle", "standby", "docked"]
+const SYMBOL = { light: "lightbulb", switch: "powerplug", fan: "fan", climate: "air.conditioner.horizontal", media_player: "play.tv",
+  cover: "blinds.horizontal.closed", lock: "lock", humidifier: "humidifier", vacuum: "fan.oscillation", button: "button.programmable",
+  input_button: "button.programmable", scene: "sparkles", script: "scroll", input_boolean: "togglepower", siren: "light.beacon.max",
+  select: "list.bullet", input_select: "list.bullet", number: "slider.horizontal.3", input_number: "slider.horizontal.3" }
+const LABEL = { off: "Off", heat: "Heat", cool: "Cool", heat_cool: "Auto", auto: "Auto", dry: "Dry", fan_only: "Fan only" }
+const KIND = { light: "Light", switch: "Switch", fan: "Fan", climate: "Climate", sensor: "Sensor", binary_sensor: "Sensor", scene: "Scene",
+  script: "Script", button: "Button", select: "Setting", input_select: "Setting", number: "Setting", input_number: "Setting", media_player: "Media", cover: "Blind", lock: "Lock", humidifier: "Humidifier", weather: "Weather" }
+const MODE_SYMBOL = { off: "power", cool: "snowflake", heat: "flame", dry: "drop", fan_only: "fan", auto: "arrow.triangle.2.circlepath", heat_cool: "arrow.triangle.2.circlepath" }
+const MODE_TINT = { cool: "systemBlueColor", heat: "systemOrangeColor", dry: "systemTealColor", fan_only: "systemGreenColor", auto: "systemGreenColor", heat_cool: "systemGreenColor" }
+const MODE_BG = { cool: "#0A84FF", heat: "#FF9F0A", dry: "#30B0C7", fan_only: "#30D158", auto: "#30D158", heat_cool: "#30D158" }
+const CHIPS = 7  // Climate modes and fan speeds become buttons up to this many; longer lists stay in menus.
+const STEPS = 12  // Brightness, warmth and colour bars share one width.
+const RANKED = ["climate", "light", "switch", "fan", "humidifier", "cover", "media_player", "lock", "vacuum", "scene", "script", "sensor", "binary_sensor", "weather"]
+
+const url = (/^https?:\/\//.test(env("ha_url")) ? env("ha_url") : "http://" + env("ha_url")).replace(/\/(api\/?)?$/, "").replace(/\/+$/, "")
+const token = env("ha_token")
+let pinned = env("entities").split(/[\s,]+/).filter(Boolean)
+
+// ha_mock: a saved /api/states file to read instead of Home Assistant; commands are then dropped, so tests never touch the home.
+const mock = env("ha_mock")
+function api(path, body) {
+  if (mock) {
+    const list = readJSON(mock)
+    return path === "states" ? list : body ? [] : list.find(e => "states/" + e.entity_id === path)
+  }
+  const cmd = `printf %s ${sh("Authorization: Bearer " + token)} | curl -sS -m ${body ? 10 : 3} -H @- -H 'Content-Type: application/json' ` +
+    (body ? `-X POST --data ${sh(JSON.stringify(body))} ` : "") + `-w '\\n%{http_code}' ${sh(url + "/api/" + path)} 2>/dev/null || true`
+  const out = app.doShellScript(cmd, { alteringLineEndings: false })
+  const code = out.slice(out.lastIndexOf("\n") + 1)
+  if (code === "401") throw new Error("Home Assistant didn't accept the token.")
+  if (code !== "200" && code !== "201") throw new Error(`Can't reach Home Assistant at ${url}.`)
+  return JSON.parse(out.slice(0, out.lastIndexOf("\n")))
+}
+
+const CACHE = ObjC.unwrap($.NSTemporaryDirectory()) + "com.dullylabs.alfredui.home.states.json"
+let offlineSince = null  // When Home Assistant can't be reached, the last saved states are shown instead.
+function states(maxAge) {
+  const attrs = $.NSFileManager.defaultManager.attributesOfItemAtPathError(CACHE, null), saved = attrs.js && attrs.js.NSFileModificationDate.js
+  if (maxAge && saved && (Date.now() - saved.getTime()) / 1000 < maxAge) return readJSON(CACHE)
+  let list
+  try { list = api("states") } catch (err) {
+    if (!saved || /token/.test(err.message)) throw err
+    offlineSince = saved
+    return readJSON(CACHE)
+  }
+  $(JSON.stringify(list)).writeToFileAtomicallyEncodingError(CACHE, true, $.NSUTF8StringEncoding, null)
+  return list
+}
+
+const domain = id => id.split(".")[0]
+const service = (name, id, data = {}) => api(`services/${name.replace(".", "/")}`, { entity_id: id, ...data })
+const name = e => e.attributes.friendly_name || e.entity_id
+const isOn = e => !OFF.includes(e.state)
+const isControl = e => TOGGLE.includes(domain(e.entity_id)) || PRESS[domain(e.entity_id)] || SETTING.includes(domain(e.entity_id))
+const isNumber = id => ["number", "input_number"].includes(domain(id))
+
+function value(e) {
+  const n = Number(e.state), unit = e.attributes.unit_of_measurement
+  if (/^\d{4}-\d\d-\d\dT/.test(e.state)) return ""
+  return e.state === "" || isNaN(n) ? e.state.replace(/_/g, " ") : `${Math.round(n * 10) / 10}${unit ? " " + unit : ""}`
+}
+
+// The 0-100 level a tile's meter shows, or null when the entity has none.
+function level(e) {
+  const a = e.attributes, d = domain(e.entity_id)
+  if (d === "light" && (a.supported_color_modes || []).some(m => m !== "onoff")) return a.brightness == null ? 0 : Math.round(a.brightness / 2.55)
+  if (d === "fan" && "percentage" in a) return a.percentage || 0
+  if (d === "cover" && "current_position" in a) return a.current_position
+  if (d === "media_player" && "volume_level" in a) return Math.round(a.volume_level * 100)
+  // HA marks numbers meant to be typed, not slid, as "box"; those get no bar.
+  if (isNumber(e.entity_id) && a.mode !== "box" && a.max > a.min) return Math.round((Number(e.state) - a.min) / (a.max - a.min) * 100)
+  return null
+}
+
+// Colour bars: hex for a hue (degrees) and an approximate hex for a colour temperature (Tanner Helland's fit).
+const hex = (r, g, b) => "#" + [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("")
+function hueHex(h) {
+  const f = n => { const k = (n + h / 60) % 6; return 255 * (1 - Math.max(0, Math.min(k, 4 - k, 1))) }
+  return hex(f(5), f(3), f(1))
+}
+function kelvinHex(k) {
+  const t = k / 100
+  return hex(t <= 66 ? 255 : 329.7 * (t - 60) ** -0.1332, t <= 66 ? 99.47 * Math.log(t) - 161.12 : 288.12 * (t - 60) ** -0.0755,
+    t >= 66 ? 255 : t <= 19 ? 0 : 138.52 * Math.log(t - 10) - 305.04)
+}
+const hasWarmth = e => (e.attributes.supported_color_modes || []).includes("color_temp")
+const hasColour = e => (e.attributes.supported_color_modes || []).some(m => ["hs", "rgb", "rgbw", "rgbww", "xy"].includes(m))
+const kelvinAt = (e, i) => {
+  const lo = e.attributes.min_color_temp_kelvin || 2000, hi = e.attributes.max_color_temp_kelvin || 6500
+  return Math.round(lo + (hi - lo) * i / (STEPS - 1))
+}
+
+function options(e) {  // [primary picker values, secondary picker values, selected primary, selected secondary]
+  const a = e.attributes, d = domain(e.entity_id)
+  if (d === "climate") return [a.hvac_modes || [], a.fan_modes || [], e.state, a.fan_mode]
+  if (d === "light") return [a.effect_list || [], [], a.effect]
+  if (d === "fan") return [a.preset_modes || [], [], a.preset_mode]
+  if (d === "media_player") return [a.source_list || [], [], a.source]
+  if (d === "select" || d === "input_select") return [a.options || [], [], e.state]
+  return [[], []]
+}
+
+function tile(e) {
+  const d = domain(e.entity_id), a = e.attributes, on = isOn(e) && TOGGLE.includes(d), lvl = level(e)
+  const [opts, opts2, sel, sel2] = options(e)
+  const climate = d === "climate", tint = climate && on && MODE_TINT[e.state]
+  const state = climate ? LABEL[e.state] || e.state : isNumber(e.entity_id) ? value(e) : lvl != null && on ? `${lvl}%` : e.state.replace(/_/g, " ")
+  const row = {
+    uid: e.entity_id, entity: e.entity_id, "key.text": `${name(e)} ${e.entity_id.replace(/[._]/g, " ")}`,
+    "name.text": name(e), "state.text": state, "switchview.hidden": !TOGGLE.includes(d), "run.hidden": !PRESS[d],
+    "track.contenttintcolour": on ? "systemGreenColor" : "tertiaryLabelColor", "knobL.hidden": on, "knobR.hidden": !on,
+    "icon.image": { type: "symbol", src: (SYMBOL[d] || "circle.dotted") + (on ? ".fill" : "") },
+    "icon.contenttintcolour": tint || (on ? "systemYellowColor" : "secondaryLabelColor"),
+    "tile.background": tint ? { light: MODE_BG[e.state] + "22", dark: MODE_BG[e.state] + "18" } : on ? { light: "#FFCC0022", dark: "#FFCC0018" } : { light: "#0000000D", dark: "#FFFFFF14" },
+    "levelrow.hidden": lvl == null, "temprow.hidden": d !== "climate",
+    "target.text": a.temperature == null ? "–" : `${a.temperature}°`, "current.text": a.current_temperature == null ? "" : `${a.current_temperature}° now`,
+    "options.hidden": !opts.length || climate && opts.length <= CHIPS, "options.items": opts.map(v => ({ text: (climate && LABEL[v]) || String(v).replace(/_/g, " "), value: v })), "options.selected": sel,
+    "options2.hidden": !opts2.length || climate && opts2.length <= CHIPS, "options2.items": opts2.map(v => ({ text: `Fan ${v}`, value: v })), "options2.selected": sel2,
+  }
+  // Climate modes as icon buttons and fan speeds as text chips, straight from the entity's own lists.
+  const modes = climate && opts.length <= CHIPS ? opts : [], fans = climate && opts2.length <= CHIPS ? opts2 : []
+  for (let i = 0; i < CHIPS; i++) Object.assign(row, {
+    [`mode${i}.hidden`]: i >= modes.length, [`mode${i}.tooltip`]: LABEL[modes[i]] || String(modes[i] || "").replace(/_/g, " "),
+    [`mode${i}.image`]: { type: "symbol", src: MODE_SYMBOL[modes[i]] || "circle.dotted" },
+    [`mode${i}.contenttintcolour`]: modes[i] === sel ? MODE_TINT[sel] || "labelColor" : "tertiaryLabelColor",
+    [`fan${i}.hidden`]: i >= fans.length, [`fan${i}.text`]: String(fans[i] || "").replace(/_/g, " "),
+    [`fan${i}.effect`]: fans[i] === sel2 ? "glass" : "default" })
+  for (let i = 0; i < STEPS; i++) row[`seg${i}.contenttintcolour`] = lvl != null && (on || isNumber(e.entity_id)) && lvl >= pctAt(i) - 50 / STEPS ? "systemYellowColor" : "quaternaryLabelColor"
+  // The segment nearest the current setting is drawn as an outline, so the bar shows where the light is.
+  const warmNow = on && a.color_mode === "color_temp" && a.color_temp_kelvin
+    ? Math.round((a.color_temp_kelvin - kelvinAt(e, 0)) / (kelvinAt(e, STEPS - 1) - kelvinAt(e, 0)) * (STEPS - 1)) : -1
+  const hueNow = on && a.color_mode !== "color_temp" && a.hs_color ? Math.round(a.hs_color[0] / (360 / STEPS)) % STEPS : -1
+  const gone = e.state === "unavailable"  // Unavailable devices show only their name and state.
+  Object.assign(row, { "warmrow.hidden": gone || !hasWarmth(e), "huerow.hidden": gone || !hasColour(e), "optrow.hidden": gone || row["options.hidden"] && row["options2.hidden"], "moderow.hidden": gone || !modes.length, "fanrow.hidden": gone || !fans.length,
+    "levelrow.hidden": gone || lvl == null, "temprow.hidden": gone || !climate || a.temperature == null, "switchhit.enabled": !gone, "switchview.opacity": gone ? 0.4 : 1, "tile.opacity": gone ? 0.5 : 1 })
+  // Previews run to 10000 K at the cool end, since a true 6500 K swatch looks plain white on screen.
+  for (let i = 0; i < STEPS; i++) Object.assign(row, { [`warm${i}.contenttintcolour`]: kelvinHex(kelvinAt(e, 0) + (10000 - kelvinAt(e, 0)) * i / (STEPS - 1)),
+    [`warm${i}.image`]: { type: "symbol", src: i === warmNow ? "rectangle.inset.filled" : "rectangle.fill" } })
+  for (let i = 0; i < STEPS; i++) Object.assign(row, { [`hue${i}.contenttintcolour`]: hueHex(i * 360 / STEPS),
+    [`hue${i}.image`]: { type: "symbol", src: i === hueNow ? "rectangle.inset.filled" : "rectangle.fill" } })
+  return row
+}
+
+const pctAt = i => Math.round((i + 1) * 100 / STEPS)
+
+// One clickable swatch per step; each bar's segments are built here so the step count lives in one place.
+const BARS = {
+  levelrow: i => ["seg", "level", pctAt(i), `${pctAt(i)}%`],
+  warmrow: i => ["warm", "warm", i, i === 0 ? "Warmest" : i === STEPS - 1 ? "Coolest" : "White"],
+  huerow: i => ["hue", "hue", Math.round(i * 360 / STEPS), "Colour"],
+  moderow: i => ["mode", "mode", i, ""],
+  fanrow: i => ["fan", "fan", i, "Fan speed"],
+}
+function fillBars(node) {
+  if (BARS[node.id]) node.components = Array.from({ length: ["moderow", "fanrow"].includes(node.id) ? CHIPS : STEPS }, (_, i) => {
+    const [prefix, cmd, arg, tooltip] = BARS[node.id](i)
+    const look = prefix === "fan" ? { text: " ", bordered: true, bordershape: "capsule", font: { size: 11 } } : { image: { type: "symbol", src: "rectangle.fill" }, font: { size: prefix === "mode" ? 16 : 18 } }
+    return { id: prefix + i, type: "button", bordered: false, tooltip, ...look,
+      events: [{ action: { type: "script", src: "scripts/home", async: true, args: [cmd, "{data:entity}", String(arg)] } }] }
+  })
+  ;(node.components || []).forEach(fillBars)
+  if (node.cell) fillBars(node.cell.root)
+  return node
+}
+
+const NAME_FILTER = { type: "basic", args: "name.text", match: "{var:f}", matchmode: "wordmatchanyorder" }
+const PICK_FILTER = { type: "basic", args: "pkey.text", match: "{var:q}", matchmode: "wordmatchanyorder" }
+// Height of a grid of n cells; each row's h includes 8 of cell spacing, which the last row doesn't need.
+const rows = (n, cols, h) => ({ constraints: { size: { height: Math.max(1, Math.ceil(n / cols)) * h - 8 } } })
+
+function render(list) {
+  const byId = Object.fromEntries(list.map(e => [e.entity_id, e]))
+  const shown = pinned.map(id => byId[id]).filter(Boolean)
+  // Devices with extra controls get big tiles; plain on/off devices get small ones.
+  const all = shown.filter(isControl).map(tile), rich = r => ["levelrow", "temprow", "warmrow", "huerow", "optrow", "moderow", "fanrow"].some(k => !r[`${k}.hidden`])
+  const tiles = all.filter(rich), switches = all.filter(r => !rich(r))
+  // Big number on top; unit and the name's first part (before any " | ") underneath, full name on hover.
+  const readings = shown.filter(e => !isControl(e)).map(e => {
+    const unit = e.attributes.unit_of_measurement, v = value(e)
+    return { uid: e.entity_id, entity: e.entity_id, "value.text": unit ? v.replace(` ${unit}`, "") : v, "rcard.tooltip": name(e),
+      "label.text": [name(e).split(" | ")[0], unit].filter(Boolean).join(" · ") }
+  })
+  const ids = {
+    setup: { hidden: true }, main: { hidden: false },
+    // Each refresh replaces the whole data object, so the filter has to come along too.
+    tiles: { data: { src: tiles, filter: NAME_FILTER }, ...rows(tiles.length, 2, 160) },
+    switches: { data: { src: switches, filter: NAME_FILTER }, ...rows(switches.length, 3, 74) },
+    readings: { data: { src: readings }, ...rows(readings.length, 4, 64) },
+    updated: { text: `${offlineSince ? "Offline · saved" : "Updated"} ${(offlineSince || new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` },
+  }
+  // Sections are swapped in only when shown, since hidden components still take up space.
+  const sections = { empty: !shown.length, tiles: tiles.length > 0, switches: switches.length > 0, readings: readings.length > 0 }
+  const layout = JSON.stringify(sections), out = { variables: { entities: pinned.join("\n"), layout }, update: { relayout: true, ids } }
+  if (layout !== env("layout")) {
+    out.replace = { ids: Object.fromEntries(Object.entries(sections).map(([key, show]) =>
+      [`sec_${key}`, show ? applyUpdates(fillBars(readJSON(`components/${key}.json`)), ids) : { type: "view" }])) }
+    out.window = { resize: { height: "auto" } }
+  }
+  return out
+}
+
+function applyUpdates(node, ids) {
+  if (node.id && ids[node.id]) Object.assign(node, ids[node.id])
+  ;(node.components || []).forEach(c => applyUpdates(c, ids))
+  return node
+}
+
+// Pinned first, then things people control, then sensors, then the rest (buttons, diagnostics, updates).
+const rank = e => (pinned.includes(e.entity_id) ? -100 : 0) + (RANKED.includes(domain(e.entity_id)) ? RANKED.indexOf(domain(e.entity_id)) : 50)
+
+function pickList(list) {
+  return list.slice().sort((a, b) => rank(a) - rank(b) || name(a).localeCompare(name(b))).slice(0, 500).map(e => {
+    const on = pinned.includes(e.entity_id)
+    return { uid: e.entity_id, entity: e.entity_id, "pname.text": name(e),
+      "pid.text": [KIND[domain(e.entity_id)] || domain(e.entity_id).replace(/_/g, " "), value(e)].filter(Boolean).join(" · "),
+      "pkey.text": `${name(e)} ${e.entity_id.replace(/[._]/g, " ")}`,
+      "check.image": { type: "symbol", src: on ? "checkmark.circle.fill" : "plus.circle" },
+      "check.contenttintcolour": on ? "systemGreenColor" : "secondaryLabelColor", "check.tooltip": on ? "Remove" : "Add" }
+  })
+}
+
+function pickerSheet(list) {
+  const sheet = readJSON("components/picker.json")
+  sheet.sheet.root.components.find(c => c.id === "picker").data.src = pickList(list)
+  return sheet
+}
+
+// A 0-100 level mapped onto the entity's own range and step.
+function setNumber(id, pct) {
+  const a = api(`states/${id}`).attributes, step = a.step || 1
+  return service(`${domain(id)}.set_value`, id, { value: Number((Math.round((a.min + (a.max - a.min) * pct / 100) / step) * step).toFixed(6)) })
+}
+
+function act(cmd, id, arg) {
+  const d = domain(id), e = () => api(`states/${id}`), n = Number(arg)
+  if (cmd === "toggle") return PRESS[d] ? service(`${d}.${PRESS[d]}`, id) : service("homeassistant.toggle", id)
+  if (cmd === "level") return ({
+    light: () => service("light.turn_on", id, { brightness_pct: n }),
+    fan: () => service("fan.set_percentage", id, { percentage: n }),
+    cover: () => service("cover.set_cover_position", id, { position: n }),
+    media_player: () => service("media_player.volume_set", id, { volume_level: n / 100 }),
+    number: () => setNumber(id, n), input_number: () => setNumber(id, n),
+  }[d] || (() => {}))()
+  if (cmd === "step") {
+    if (d === "climate") {
+      const a = e().attributes
+      return service("climate.set_temperature", id, { temperature: Math.max(a.min_temp ?? 7, Math.min(a.max_temp ?? 35, (a.temperature ?? 22) + n * (a.target_temp_step || 1))) })
+    }
+    const now = level(e())
+    if (now != null) return act("level", id, String(Math.max(isNumber(id) ? 0 : 1, Math.min(100, now + n * 10))))
+  }
+  if (cmd === "warm") return service("light.turn_on", id, { color_temp_kelvin: kelvinAt(e(), n) })
+  if (cmd === "hue") return service("light.turn_on", id, { hs_color: [n, 100] })
+  if (cmd === "mode" || cmd === "fan") {  // Chip buttons send their index; the entity's own list says what it means.
+    const [modes, fans] = options(e())
+    return act(cmd === "mode" ? "option" : "option2", id, (cmd === "mode" ? modes : fans)[n])
+  }
+  if (cmd.startsWith("option")) {  // A refresh re-selecting the current value must not send a command.
+    const ent = e(), [, , sel, sel2] = options(ent)
+    if (arg === (cmd === "option" ? sel : sel2)) return
+  }
+  if (cmd === "option") return ({
+    climate: () => service("climate.set_hvac_mode", id, { hvac_mode: arg }),
+    light: () => service("light.turn_on", id, { effect: arg }),
+    fan: () => service("fan.set_preset_mode", id, { preset_mode: arg }),
+    media_player: () => service("media_player.select_source", id, { source: arg }),
+    select: () => service("select.select_option", id, { option: arg }),
+    input_select: () => service("input_select.select_option", id, { option: arg }),
+  }[d] || (() => {}))()
+  if (cmd === "option2" && d === "climate") return service("climate.set_fan_mode", id, { fan_mode: arg })
+  if (cmd === "pin") {
+    pinned = pinned.includes(id) ? pinned.filter(p => p !== id) : [...pinned, id]
+    // In the background: Alfred is waiting on this script, so a blocking call to Alfred would deadlock.
+    app.doShellScript(`osascript -e ${sh(`tell application id "com.runningwithcrayons.Alfred" to set configuration "entities" to value ${JSON.stringify(pinned.join("\n"))} in workflow "${env("alfred_workflow_bundleid") || "com.dullylabs.alfredui.home"}" exportable false`)} >/dev/null 2>&1 &`)
+  }
+}
+
+function setup(heading, detail) {
+  return JSON.stringify({ update: { ids: { setup: { hidden: false }, main: { hidden: true },
+    setup_heading: { text: heading }, setup_detail: { text: detail, hidden: !detail } } } })
+}
+
+function run(argv) {
+  const [cmd = "state", id = "", arg = ""] = argv
+  if (!mock && (!env("ha_url") || !token)) return setup("Connect Home Assistant", "")
+  try {
+    if (cmd === "firstrun") return JSON.stringify(pinned.length ? {} : pickerSheet(states(0)))
+    if (!["state", "pick"].includes(cmd)) {
+      if (!id) return JSON.stringify({})
+      act(cmd, id, arg)
+    }
+    const list = states(["pick", "pin"].includes(cmd) ? 300 : 0), out = render(list)
+    if (cmd === "pin") out.update.ids.picker = { data: { src: pickList(list), filter: PICK_FILTER } }
+    if (cmd === "pick") Object.assign(out, pickerSheet(list))
+    return JSON.stringify(out)
+  } catch (err) {
+    return setup(String(err.message || err), "Check the address and token in Configure Workflow.")
+  }
+}

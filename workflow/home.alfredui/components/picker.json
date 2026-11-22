@@ -1,0 +1,245 @@
+{
+  "sheet": {
+    "id": "pickersheet",
+    "root": {
+      "type": "view",
+      "layout": "border",
+      "spacing": 8,
+      "padding": 12,
+      "constraints": {
+        "size": {
+          "width": 560,
+          "height": 430
+        }
+      },
+      "shortcuts": [
+        {
+          "shortcut": "↑",
+          "action": {
+            "type": "function",
+            "src": "picker",
+            "args": "selectprevious"
+          }
+        },
+        {
+          "shortcut": "↓",
+          "action": {
+            "type": "function",
+            "src": "picker",
+            "args": "selectnext"
+          }
+        }
+      ],
+      "components": [
+        {
+          "constraints": {
+            "region": "top"
+          },
+          "type": "view",
+          "layout": "inline",
+          "direction": "vertical",
+          "spacing": 6,
+          "components": [
+            {
+              "type": "label",
+              "text": "Add devices and sensors",
+              "font": {
+                "size": 17,
+                "weight": "semibold"
+              }
+            },
+            {
+              "id": "search",
+              "type": "textfield",
+              "focus": true,
+              "placeholder": "Search by name",
+              "font": {
+                "size": 16
+              },
+              "textinsets": {
+                "horizontal": 8,
+                "vertical": 6
+              },
+              "events": [
+                {
+                  "triggers": "changed",
+                  "action": [
+                    {
+                      "type": "json",
+                      "variables": {
+                        "q": "{value:search.text}"
+                      },
+                      "src": {}
+                    },
+                    {
+                      "type": "function",
+                      "src": "picker",
+                      "args": "filterdata"
+                    }
+                  ]
+                },
+                {
+                  "triggers": "actioned",
+                  "action": {
+                    "type": "script",
+                    "src": "scripts/home",
+                    "args": [
+                      "pin",
+                      "{value:picker.selected.entity}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "constraints": {
+            "region": "centre"
+          },
+          "id": "picker",
+          "type": "dataview",
+          "placeholder": "Loading your devices…",
+          "behaviour": {
+            "selection": {
+              "wrap": "vertical"
+            }
+          },
+          "cell": {
+            "height": 44,
+            "init": {
+              "row.background": null,
+              "pname.colour": "labelColor",
+              "pid.colour": "secondaryLabelColor"
+            },
+            "selected": {
+              "row.background": "alfredSelectedResultBackgroundColor",
+              "pname.colour": "alfredSelectedResultTextColor",
+              "pid.colour": "alfredSelectedResultTextColor"
+            },
+            "root": {
+              "id": "row",
+              "type": "view",
+              "layout": "border",
+              "padding": 6,
+              "spacing": 10,
+              "cornerradius": 6,
+              "components": [
+                {
+                  "constraints": {
+                    "region": "left"
+                  },
+                  "id": "check",
+                  "type": "button",
+                  "bordered": false,
+                  "font": {
+                    "size": 18
+                  },
+                  "events": [
+                    {
+                      "action": {
+                        "type": "script",
+                        "src": "scripts/home",
+                        "args": [
+                          "pin",
+                          "{data:entity}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "constraints": {
+                    "region": "centre"
+                  },
+                  "type": "view",
+                  "layout": "inline",
+                  "direction": "vertical",
+                  "spacing": 1,
+                  "components": [
+                    {
+                      "id": "pname",
+                      "type": "label",
+                      "font": {
+                        "weight": "medium"
+                      }
+                    },
+                    {
+                      "id": "pid",
+                      "type": "label",
+                      "font": {
+                        "size": 11
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "pkey",
+                  "type": "label",
+                  "hidden": true
+                }
+              ]
+            }
+          },
+          "data": {
+            "filter": {
+              "type": "basic",
+              "args": "pkey.text",
+              "match": "{var:q}",
+              "matchmode": "wordmatchanyorder"
+            },
+            "src": []
+          }
+        },
+        {
+          "constraints": {
+            "region": "bottom"
+          },
+          "type": "view",
+          "layout": "border",
+          "components": [
+            {
+              "constraints": {
+                "region": "left"
+              },
+              "type": "label",
+              "colour": "secondaryLabelColor",
+              "text": "↩ add or remove",
+              "font": {
+                "size": 11
+              }
+            },
+            {
+              "constraints": {
+                "region": "right"
+              },
+              "type": "button",
+              "text": "Done",
+              "shortcut": "⌘↩",
+              "events": [
+                {
+                  "action": [
+                    {
+                      "type": "json",
+                      "src": {
+                        "sheet": {
+                          "close": "pickersheet"
+                        }
+                      }
+                    },
+                    {
+                      "type": "script",
+                      "src": "scripts/home",
+                      "args": "state"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "spacing": 8
+        }
+      ]
+    }
+  }
+}

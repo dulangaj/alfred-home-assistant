@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.dullylabs.alfredui.home</string>
+	<key>connections</key>
+	<dict>
+		<key>HOME-KEYWORD</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>HOME-UI</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>HOME-TRIGGER</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>HOME-UI</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>DullyLabs</string>
+	<key>description</key>
+	<string>Control Home Assistant from Alfred</string>
+	<key>name</key>
+	<string>Home</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>keyword</key>
+				<string>home</string>
+				<key>subtext</key>
+				<string>Control Home Assistant from Alfred</string>
+				<key>text</key>
+				<string>Home</string>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.keyword</string>
+			<key>uid</key>
+			<string>HOME-KEYWORD</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>triggerid</key>
+				<string>open</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.external</string>
+			<key>uid</key>
+			<string>HOME-TRIGGER</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>launchmode</key>
+				<integer>0</integer>
+				<key>path</key>
+				<string>home.alfredui</string>
+				<key>stackview</key>
+				<false/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.userinterface.alfredui</string>
+			<key>uid</key>
+			<string>HOME-UI</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>Control Home Assistant from Alfred.
+
+1. In Home Assistant, click your name (bottom left) › Security › Create token, and copy it.
+2. Click Configure Workflow. Paste your Home Assistant address and the token.
+3. Type `home` and search for your devices.
+
+Allow Alfred on your local network if macOS asks.</string>
+	<key>uidata</key>
+	<dict>
+		<key>HOME-KEYWORD</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>30</integer>
+		</dict>
+		<key>HOME-TRIGGER</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>160</integer>
+		</dict>
+		<key>HOME-UI</key>
+		<dict>
+			<key>xpos</key>
+			<integer>230</integer>
+			<key>ypos</key>
+			<integer>95</integer>
+		</dict>
+	</dict>
+	<key>userconfigurationconfig</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>placeholder</key>
+				<string>http://homeassistant.local:8123</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>label</key>
+			<string>Home Assistant address</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>ha_url</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>placeholder</key>
+				<string></string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>A password for Alfred. In Home Assistant, click your name (bottom left) › Security › Create token, then paste it here.</string>
+			<key>label</key>
+			<string>Access token</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>ha_token</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Leave empty. You'll pick devices by searching.</string>
+			<key>label</key>
+			<string>Devices shown</string>
+			<key>type</key>
+			<string>textarea</string>
+			<key>variable</key>
+			<string>entities</string>
+		</dict>
+	</array>
+</dict>
+</plist>
